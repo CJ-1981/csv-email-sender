@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Email Sender - Client-Side Bulk Email Tool</title>
+    <meta name="description" content="Client-side bulk email sender for Gmail and Outlook with CSV upload and attachment support">
+
+    <!-- External Libraries (CDN) -->
+    <!-- Papa Parse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <!-- Google API Client for Gmail -->
+    <script src="https://apis.google.com/js/api.js"></script>
+
+    <!-- Microsoft Graph SDK for Outlook -->
+    <script src="https://unpkg.com/@microsoft/microsoft-graph-client@3.0.5/lib/graph-js-sdk.js"></script>
+    <script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>
+
+    <!-- Application Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="app-header">
+        <h1>CSV Email Sender</h1>
+        <p class="subtitle">Client-side bulk email tool for Gmail and Outlook</p>
+        <a href="https://github.com/chimin123/csv-email-sender" target="_blank" rel="noopener" class="github-link">
+            View on GitHub
+        </a>
+    </header>
+
+    <main class="main-container">
+        <!-- Anti-Spam Warning Section (F009, AC021) -->
+        <section class="warning-section" aria-labelledby="warning-heading">
+            <h2 id="warning-heading" class="warning-title">Important: Anti-Spam Compliance</h2>
+            <div class="warning-content" role="alert">
+                <ul class="warning-list">
+                    <li><strong>Daily Sending Limits:</strong> Gmail: 100-500 emails/day, Outlook: similar limits</li>
+                    <li><strong>Account Suspension Risk:</strong> Spam-like behavior may result in account suspension</li>
+                    <li><strong>Recommended Delays:</strong> Use delays between sends (minimum 1000ms recommended)</li>
+                    <li><strong>CAN-SPAM Act:</strong> Ensure compliance with anti-spam laws</li>
+                    <li><strong>Best Practice:</strong> Only email people who consented to receive messages</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- File Upload Section (F001, F002) -->
+        <section class="upload-section" aria-labelledby="upload-heading">
+            <h2 id="upload-heading" class="section-title">1. Upload Files</h2>
+
+            <!-- CSV File Upload -->
+            <div class="upload-group">
+                <label for="csv-file-input" class="file-label">
+                    <span class="label-text">CSV File *</span>
+                    <span class="label-hint">Required columns: recipient_email, subject</span>
+                </label>
+                <input
+                    type="file"
+                    id="csv-file-input"
+                    accept=".csv"
+                    aria-describedby="csv-hint csv-status"
+                    class="file-input"
+                >
+                <div id="csv-status" class="status-message" aria-live="polite"></div>
+                <p id="csv-hint" class="hint-text">
+                    Optional columns: attachment_filename, body_content
+                </p>
+            </div>
+
+            <!-- Attachment Files Upload -->
+            <div class="upload-group">
+                <label for="attachment-file-input" class="file-label">
+                    <span class="label-text">Attachment Files</span>
+                    <span class="label-hint">Select one or more files (max 20MB total recommended)</span>
+                </label>
+                <input
+                    type="file"
+                    id="attachment-file-input"
+                    accept="*/*"
+                    multiple
+                    aria-describedby="attachment-status"
+                    class="file-input"
+                >
+                <div id="attachment-status" class="status-message" aria-live="polite"></div>
+                <div id="attachment-list" class="attachment-list" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <!-- Provider Selection Section (F003, F004, AC005-AC007) -->
+        <section class="provider-section" aria-labelledby="provider-heading">
+            <h2 id="provider-heading" class="section-title">2. Select Email Provider</h2>
+
+            <div class="provider-group">
+                <label for="provider-select" class="provider-label">Email Provider:</label>
+                <select id="provider-select" class="provider-select" aria-describedby="auth-status">
+                    <option value="">-- Select Provider --</option>
+                    <option value="gmail">Gmail</option>
+                    <option value="outlook">Outlook</option>
+                </select>
+
+                <button
+                    type="button"
+                    id="auth-button"
+                    class="auth-button"
+                    disabled
+                    aria-label="Authenticate with selected provider"
+                >
+                    Authenticate
+                </button>
+
+                <button
+                    type="button"
+                    id="setup-wizard-button"
+                    class="preset-button"
+                    onclick="openOAuthWizard()"
+                    aria-label="Open OAuth setup wizard"
+                >
+                    ⚙️ Setup OAuth
+                </button>
+
+                <div id="auth-status" class="status-message" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <!-- Sending Configuration Section (F005, AC008-AC009) -->
+        <section class="config-section" aria-labelledby="config-heading">
+            <h2 id="config-heading" class="section-title">3. Configure Sending</h2>
+
+            <div class="config-group">
+                <!-- Delay Configuration -->
+                <div class="delay-group">
+                    <label for="delay-input" class="config-label">
+                        Delay Between Sends (milliseconds):
+                    </label>
+                    <div class="delay-input-group">
+                        <input
+                            type="number"
+                            id="delay-input"
+                            min="0"
+                            value="5000"
+                            class="delay-input"
+                            aria-describedby="delay-hint delay-status"
+                        >
+                        <div class="preset-buttons">
+                            <button type="button" class="preset-button" data-delay="1000" aria-label="Set delay to 1 second">1s</button>
+                            <button type="button" class="preset-button" data-delay="5000" aria-label="Set delay to 5 seconds">5s</button>
+                            <button type="button" class="preset-button" data-delay="10000" aria-label="Set delay to 10 seconds">10s</button>
+                        </div>
+                    </div>
+                    <p id="delay-hint" class="hint-text">Recommended minimum: 1000ms</p>
+                    <div id="delay-status" class="status-message" aria-live="polite"></div>
+
+                    <!-- Randomization Option -->
+                    <div class="randomization-group">
+                        <label class="checkbox-label">
+                            <input
+                                type="checkbox"
+                                id="randomization-checkbox"
+                                class="checkbox-input"
+                                aria-describedby="randomization-hint"
+                            >
+                            <span>Enable randomization (±20%)</span>
+                        </label>
+                        <p id="randomization-hint" class="hint-text">
+                            Adds random variation to delays to avoid rate limit detection
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Default Body Content -->
+                <div class="body-group">
+                    <label for="default-body" class="config-label">Default Email Body:</label>
+                    <textarea
+                        id="default-body"
+                        rows="5"
+                        class="body-textarea"
+                        aria-describedby="body-hint"
+                        placeholder="Enter default email body content (can be overridden per row in CSV)"
+                    ></textarea>
+                    <p id="body-hint" class="hint-text">
+                        This body will be used for all emails unless overridden by the body_content column in CSV
+                    </p>
+                </div>
+
+                <!-- Time Estimate Display -->
+                <div id="time-estimate" class="time-estimate" aria-live="polite">
+                    <strong>Estimated Total Time:</strong> Not calculated yet
+                </div>
+            </div>
+        </section>
+
+        <!-- Progress and Control Section (F006, F007, F013, AC010, AC016) -->
+        <section class="progress-section" aria-labelledby="progress-heading">
+            <h2 id="progress-heading" class="section-title">4. Send Emails</h2>
+
+            <div class="control-group">
+                <!-- Control Buttons -->
+                <div class="button-group">
+                    <button
+                        type="button"
+                        id="start-button"
+                        class="start-button"
+                        disabled
+                        aria-label="Start sending emails"
+                    >
+                        Start Sending
+                    </button>
+                    <button
+                        type="button"
+                        id="abort-button"
+                        class="abort-button"
+                        disabled
+                        aria-label="Abort sending process"
+                    >
+                        Abort
+                    </button>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="progress-container" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Email sending progress">
+                    <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+                    <span id="progress-text" class="progress-text">0 / 0 (0%)</span>
+                </div>
+
+                <!-- Progress Stats -->
+                <div class="progress-stats" aria-live="polite">
+                    <div class="stat-item">
+                        <span class="stat-label">Sent:</span>
+                        <span id="sent-count" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Failed:</span>
+                        <span id="failed-count" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Time Elapsed:</span>
+                        <span id="time-elapsed" class="stat-value">00:00:00</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Est. Remaining:</span>
+                        <span id="time-remaining" class="stat-value">--:--:--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Log -->
+            <div class="log-group">
+                <h3 class="log-title">Progress Log</h3>
+                <div id="progress-log" class="progress-log" role="log" aria-live="polite" aria-atomic="false">
+                    <div class="log-entry log-info">Ready to start. Upload CSV and authenticate to begin.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary Section (F008, AC018-AC020) -->
+        <section id="summary-section" class="summary-section hidden" aria-labelledby="summary-heading">
+            <h2 id="summary-heading" class="section-title">Sending Summary</h2>
+
+            <div class="summary-stats">
+                <div class="summary-stat">
+                    <span class="summary-label">Total Attempted:</span>
+                    <span id="summary-total" class="summary-value">0</span>
+                </div>
+                <div class="summary-stat success">
+                    <span class="summary-label">Successfully Sent:</span>
+                    <span id="summary-sent" class="summary-value">0</span>
+                </div>
+                <div class="summary-stat failure">
+                    <span class="summary-label">Failed:</span>
+                    <span id="summary-failed" class="summary-value">0</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="summary-label">Total Time:</span>
+                    <span id="summary-time" class="summary-value">00:00:00</span>
+                </div>
+            </div>
+
+            <div class="results-table-container">
+                <h3 class="results-title">Detailed Results</h3>
+                <table id="results-table" class="results-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Row</th>
+                            <th scope="col">Recipient</th>
+                            <th scope="col">Subject</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Error</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body">
+                        <!-- Results will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="summary-actions">
+                <button type="button" id="reset-button" class="reset-button">
+                    Start Over
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- OAuth Setup Wizard Modal -->
+    <div id="oauth-wizard-modal" class="oauth-wizard-modal hidden" role="dialog" aria-labelledby="wizard-title" aria-modal="true">
+        <div class="wizard-overlay" onclick="closeOAuthWizard()"></div>
+        <div class="wizard-container">
+            <div class="wizard-header">
+                <h2 id="wizard-title">OAuth Setup Wizard</h2>
+                <button type="button" class="wizard-close" onclick="closeOAuthWizard()" aria-label="Close wizard">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="wizard-content">
+                <!-- Welcome Step -->
+                <div class="wizard-step" data-step="welcome">
+                    <div class="step-icon">🔐</div>
+                    <h3>Welcome to OAuth Setup</h3>
+                    <p class="step-description">
+                        To send emails through Gmail or Outlook, you need to configure OAuth credentials.
+                        This one-time setup enables secure authentication without storing your password.
+                    </p>
+                    <div class="info-box">
+                        <strong>🔒 Secure & Safe:</strong>
+                        <ul>
+                            <li>Credentials stored in your browser's localStorage only</li>
+                            <li>No data sent to any server</li>
+                            <li>Client-side application with full control</li>
+                        </ul>
+                    </div>
+                    <div class="wizard-actions">
+                        <button type="button" class="wizard-button primary" onclick="showProviderSelection()">
+                            Get Started
+                        </button>
+                        <button type="button" class="wizard-button secondary" onclick="skipWizard()">
+                            Remind Me Later
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Provider Selection Step -->
+                <div class="wizard-step hidden" data-step="provider">
+                    <h3>Which email provider do you want to set up?</h3>
+                    <p class="step-description">You can set up one or both providers</p>
+                    <div class="provider-cards">
+                        <button type="button" class="provider-card" onclick="showSetupInstructions('gmail')">
+                            <div class="provider-icon">📧</div>
+                            <div class="provider-name">Gmail</div>
+                            <div class="provider-description">Google Workspace & Gmail</div>
+                        </button>
+                        <button type="button" class="provider-card" onclick="showSetupInstructions('outlook')">
+                            <div class="provider-icon">📅</div>
+                            <div class="provider-name">Outlook</div>
+                            <div class="provider-description">Microsoft 365 & Outlook</div>
+                        </button>
+                    </div>
+                    <div class="wizard-actions">
+                        <button type="button" class="wizard-button secondary" onclick="showStep('welcome')">
+                            Back
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Gmail Setup Step -->
+                <div class="wizard-step hidden" data-step="gmail-setup">
+                    <h3>Gmail OAuth Setup</h3>
+                    <div class="setup-instructions">
+                        <div class="instruction-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Create Google Cloud Project</h4>
+                                <a href="https://console.cloud.google.com" target="_blank" rel="noopener" class="external-link">
+                                    Open Google Cloud Console
+                                    <span class="external-icon">↗</span>
+                                </a>
+                                <p>Create a new project or select an existing one</p>
+                            </div>
+                        </div>
+
+                        <div class="instruction-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Enable Gmail API</h4>
+                                <p>Navigate to <strong>APIs & Services > Library</strong></p>
+                                <p>Search for "Gmail API" and click <strong>Enable</strong></p>
+                            </div>
+                        </div>
+
+                        <div class="instruction-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Configure OAuth Consent Screen</h4>
+                                <p>Go to <strong>APIs & Services > OAuth consent screen</strong></p>
+                                <p>Select <strong>External</strong> user type and fill in required fields</p>
+                            </div>
+                        </div>
+
+                        <div class="instruction-step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Create OAuth Client ID</h4>
+                                <p>Go to <strong>APIs & Services > Credentials</strong></p>
+                                <p>Click <strong>Create Credentials > OAuth 2.0 Client ID</strong></p>
+                                <p>Select <strong>Web application</strong> type</p>
+                            </div>
+                        </div>
+
+                        <div class="instruction-step">
+                            <div class="step-number">5</div>
+                            <div class="step-content">
+                                <h4>Configure Authorized Origins</h4>
+                                <p>Add your current page URL to <strong>Authorized JavaScript origins</strong>:</p>
+                                <div class="url-copy-box">
+                                    <code id="gmail-origin-url"></code>
+                                    <button type="button" class="copy-button" onclick="copyToClipboard('gmail-origin-url')" aria-label="Copy URL">
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="instruction-step">
+                            <div class="step-number">6</div>
+                            <div class="step-content">
+                                <h4>Copy Client ID</h4>
+                                <p>After creating, copy the <strong>Client ID</strong> and paste it below:</p>
+                                <div class="input-group">
+                                    <label for="gmail-client-id" class="input-label">Gmail Client ID:</label>
+                                    <input
+                                        type="text"
+                                        id="gmail-client-id"
+                                        class="wizard-input"
+                                        placeholder="e.g., 123456789-abcdef.apps.googleusercontent.com"
+                                        aria-describedby="gmail-hint"
+                                    >
+                                    <p id="gmail-hint" class="input-hint">
+                                        Format: <code>XXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com</code>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="wizard-actions">
+                        <button type="button" class="wizard-button secondary" onclick="showStep('provider')">
+                            Back
+                        </button>
+                        <button type="button" class="wizard-button primary" onclick="saveGmailCredentials()">
+                            Save & Continue
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Outlook Setup Step -->
+                <div class="wizard-step hidden" data-step="outlook-setup">
+                    <h3>Outlook OAuth Setup</h3>
+                    <div class="setup-instructions">
+                        <div class="instruction-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Register App in Azure Portal</h4>
+                                <a href="https://portal.azure.com" target="_blank" rel="noopener" class="external-link">
+                                    Open Azure Portal
+                                    <span class="external-icon">↗</span>
+                                </a>
+                                <p>Navigate to <strong>Microsoft Entra ID (formerly Azure AD)</strong></p>
+                            </div>
+                        </div>
+
+                        <div class="instruction-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Create New Registration</h4>
+                                <p>Click <strong>App registrations > New registration</strong></p>
+                                <p>Enter a name (e.g., "CSV Email Sender")</p>
+                            </div>
+                        </div>
+
+                        <div class="instruction-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Configure Redirect URI</h4>
+                                <p>Under <strong>Redirect URI</strong>, select <strong>Single-page application (SPA)</strong></p>
+                                <p>Add your current page URL as a redirect URI:</p>
+                                <div class="url-copy-box">
+                                    <code id="outlook-redirect-url"></code>
+                                    <button type="button" class="copy-button" onclick="copyToClipboard('outlook-redirect-url')" aria-label="Copy URL">
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="instruction-step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Configure API Permissions</h4>
+                                <p>Go to <strong>API permissions > Add permission</strong></p>
+                                <p>Select <strong>Microsoft Graph > Delegated permissions</strong></p>
+                                <p>Search for and add <strong>Mail.Send</strong> permission</p>
+                                <p>Click <strong>Grant admin consent</strong> for your organization</p>
+                            </div>
+                        </div>
+
+                        <div class="instruction-step">
+                            <div class="step-number">5</div>
+                            <div class="step-content">
+                                <h4>Copy Client ID</h4>
+                                <p>From the <strong>Overview</strong> page, copy the <strong>Application (client) ID</strong> and paste it below:</p>
+                                <div class="input-group">
+                                    <label for="outlook-client-id" class="input-label">Outlook Client ID:</label>
+                                    <input
+                                        type="text"
+                                        id="outlook-client-id"
+                                        class="wizard-input"
+                                        placeholder="e.g., 12345678-1234-1234-1234-123456789012"
+                                        aria-describedby="outlook-hint"
+                                    >
+                                    <p id="outlook-hint" class="input-hint">
+                                        Format: <code>XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX</code>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="wizard-actions">
+                        <button type="button" class="wizard-button secondary" onclick="showStep('provider')">
+                            Back
+                        </button>
+                        <button type="button" class="wizard-button primary" onclick="saveOutlookCredentials()">
+                            Save & Continue
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Success Step -->
+                <div class="wizard-step hidden" data-step="success">
+                    <div class="step-icon success-icon">✅</div>
+                    <h3>Setup Complete!</h3>
+                    <p class="step-description">
+                        Your OAuth credentials have been saved. You can now authenticate with your email provider.
+                    </p>
+                    <div class="setup-summary">
+                        <div id="setup-gmail-status" class="setup-item hidden">
+                            <span class="setup-icon">📧</span>
+                            <span class="setup-text">Gmail configured</span>
+                        </div>
+                        <div id="setup-outlook-status" class="setup-item hidden">
+                            <span class="setup-icon">📅</span>
+                            <span class="setup-text">Outlook configured</span>
+                        </div>
+                    </div>
+                    <div class="wizard-actions">
+                        <button type="button" class="wizard-button primary" onclick="closeOAuthWizard()">
+                            Start Using App
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <p>CSV Email Sender - Client-Side Bulk Email Tool</p>
+        <p>Built with vanilla JavaScript, no backend required</p>
+        <p>
+            <a href="https://github.com/chimin123/csv-email-sender/blob/main/README.md" target="_blank" rel="noopener">
+                Documentation
+            </a> |
+            <a href="https://github.com/chimin123/csv-email-sender" target="_blank" rel="noopener">
+                GitHub
+            </a>
+        </p>
+    </footer>
+
+    <!-- Application Script -->
+    <script src="app.js"></script>
+</body>
+</html>
