@@ -125,6 +125,8 @@ const state = {
     delayMs: 5000,
     randomizationEnabled: false,
     defaultBody: '',
+    ccRecipients: '', // CC recipients (comma-separated)
+    bccRecipients: '', // BCC recipients (comma-separated)
 
     // Sending state
     isSending: false,
@@ -165,6 +167,8 @@ function initElements() {
     elements.delayInput = document.getElementById('delay-input');
     elements.randomizationCheckbox = document.getElementById('randomization-checkbox');
     elements.defaultBody = document.getElementById('default-body');
+    elements.ccRecipients = document.getElementById('cc-recipients');
+    elements.bccRecipients = document.getElementById('bcc-recipients');
     elements.delayStatus = document.getElementById('delay-status');
     elements.timeEstimate = document.getElementById('time-estimate');
 
@@ -228,6 +232,43 @@ function formatTime(ms) {
  */
 function isValidEmail(email) {
     return CONSTANTS.EMAIL_REGEX.test(email);
+}
+
+/**
+ * Validate comma-separated email addresses
+ * @param {string} emails - Comma-separated email addresses
+ * @returns {Object} Validation result with isValid flag and invalid emails array
+ */
+function validateEmailList(emails) {
+    if (!emails || !emails.trim()) {
+        return { isValid: true, invalidEmails: [] };
+    }
+
+    const emailList = emails.split(',').map(e => e.trim()).filter(e => e);
+    const invalidEmails = [];
+
+    emailList.forEach(email => {
+        if (!isValidEmail(email)) {
+            invalidEmails.push(email);
+        }
+    });
+
+    return {
+        isValid: invalidEmails.length === 0,
+        invalidEmails: invalidEmails
+    };
+}
+
+/**
+ * Parse comma-separated email addresses into array
+ * @param {string} emails - Comma-separated email addresses
+ * @returns {string[]} Array of email addresses
+ */
+function parseEmailList(emails) {
+    if (!emails || !emails.trim()) {
+        return [];
+    }
+    return emails.split(',').map(e => e.trim()).filter(e => e);
 }
 
 /**
@@ -830,6 +871,22 @@ async function startSending() {
         }
     }
 
+    // Validate CC recipients
+    const ccValidation = validateEmailList(state.ccRecipients);
+    if (!ccValidation.isValid) {
+        if (!confirm(`Invalid CC email addresses found: ${ccValidation.invalidEmails.join(', ')}\n\nContinue anyway?`)) {
+            return;
+        }
+    }
+
+    // Validate BCC recipients
+    const bccValidation = validateEmailList(state.bccRecipients);
+    if (!bccValidation.isValid) {
+        if (!confirm(`Invalid BCC email addresses found: ${bccValidation.invalidEmails.join(', ')}\n\nContinue anyway?`)) {
+            return;
+        }
+    }
+
     // Check for missing attachments (AC032)
     const missingAttachments = checkMissingAttachments();
     if (missingAttachments.length > 0) {
@@ -840,8 +897,18 @@ async function startSending() {
         }
     }
 
+    // Build confirmation message
+    let confirmMessage = `Ready to send ${state.csvRows} emails with ${state.delayMs}ms delay between sends.`;
+    if (state.ccRecipients) {
+        confirmMessage += `\n\nCC: ${state.ccRecipients}`;
+    }
+    if (state.bccRecipients) {
+        confirmMessage += `\nBCC: ${state.bccRecipients}`;
+    }
+    confirmMessage += '\n\nProceed?';
+
     // Confirm before starting
-    if (!confirm(`Ready to send ${state.csvRows} emails with ${state.delayMs}ms delay between sends.\n\nProceed?`)) {
+    if (!confirm(confirmMessage)) {
         return;
     }
 
@@ -1004,20 +1071,50 @@ async function sendSingleEmail(row) {
  * Constructs RFC 2822 formatted email with base64-encoded attachments.
  */
 async function sendGmailEmail(to, subject, body, attachment) {
+    // Get CC and BCC recipients
+    const ccList = parseEmailList(state.ccRecipients);
+    const bccList = parseEmailList(state.bccRecipients);
+
     // Build RFC 2822 email
     let emailContent = [
         `To: ${to}`,
-        `Subject: ${subject}`,
+        `Subject: ${subject}`
+    ];
+
+    // Add CC if present
+    if (ccList.length > 0) {
+        emailContent.push(`Cc: ${ccList.join(', ')}`);
+    }
+
+    // Add BCC if present
+    if (bccList.length > 0) {
+        emailContent.push(`Bcc: ${bccList.join(', ')}`);
+    }
+
+    emailContent.push(
         'MIME-Version: 1.0',
         'Content-Type: text/plain; charset=utf-8'
-    ];
+    );
 
     if (attachment) {
         // Email with attachment
         const boundary = 'boundary_' + Date.now();
         emailContent = [
             `To: ${to}`,
-            `Subject: ${subject}`,
+            `Subject: ${subject}`
+        ];
+
+        // Add CC if present
+        if (ccList.length > 0) {
+            emailContent.push(`Cc: ${ccList.join(', ')}`);
+        }
+
+        // Add BCC if present
+        if (bccList.length > 0) {
+            emailContent.push(`Bcc: ${bccList.join(', ')}`);
+        }
+
+        emailContent.push(
             'MIME-Version: 1.0',
             `Content-Type: multipart/mixed; boundary="${boundary}"`,
             '',
@@ -1026,7 +1123,7 @@ async function sendGmailEmail(to, subject, body, attachment) {
             '',
             body,
             ''
-        ];
+        );
 
         // Read attachment as base64
         const base64Attachment = await fileToBase64(attachment);
@@ -1080,6 +1177,10 @@ async function sendGmailEmail(to, subject, body, attachment) {
  * Constructs MIME message with file attachments.
  */
 async function sendOutlookEmail(to, subject, body, attachment) {
+    // Get CC and BCC recipients
+    const ccList = parseEmailList(state.ccRecipients);
+    const bccList = parseEmailList(state.bccRecipients);
+
     const message = {
         subject: subject,
         toRecipients: [{
@@ -1090,6 +1191,20 @@ async function sendOutlookEmail(to, subject, body, attachment) {
             content: body
         }
     };
+
+    // Add CC recipients if present
+    if (ccList.length > 0) {
+        message.ccRecipients = ccList.map(email => ({
+            emailAddress: { address: email }
+        }));
+    }
+
+    // Add BCC recipients if present
+    if (bccList.length > 0) {
+        message.bccRecipients = bccList.map(email => ({
+            emailAddress: { address: email }
+        }));
+    }
 
     // Add attachment if present
     if (attachment) {
@@ -1270,6 +1385,8 @@ function resetApplication() {
     state.failedCount = 0;
     state.startTime = null;
     state.results = [];
+    state.ccRecipients = '';
+    state.bccRecipients = '';
 
     // Reset form elements
     elements.csvFileInput.value = '';
@@ -1278,6 +1395,8 @@ function resetApplication() {
     elements.delayInput.value = '5000';
     elements.randomizationCheckbox.checked = false;
     elements.defaultBody.value = '';
+    elements.ccRecipients.value = '';
+    elements.bccRecipients.value = '';
 
     // Reset displays
     elements.csvStatus.textContent = '';
@@ -1392,6 +1511,15 @@ function initEventListeners() {
     elements.randomizationCheckbox.addEventListener('change', handleRandomizationChange);
     elements.defaultBody.addEventListener('input', () => {
         state.defaultBody = elements.defaultBody.value;
+    });
+
+    // CC/BCC recipients
+    elements.ccRecipients.addEventListener('input', () => {
+        state.ccRecipients = elements.ccRecipients.value;
+    });
+
+    elements.bccRecipients.addEventListener('input', () => {
+        state.bccRecipients = elements.bccRecipients.value;
     });
 
     // Preset delay buttons

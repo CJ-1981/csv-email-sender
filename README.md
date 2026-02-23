@@ -8,6 +8,7 @@ A client-side bulk email sender for Gmail and Outlook, built with vanilla JavaSc
 - **Multiple Attachments**: Upload multiple attachment files (up to 20MB total recommended)
 - **Dual Provider Support**: Send via Gmail API or Microsoft Graph API (Outlook)
 - **OAuth Authentication**: Secure OAuth 2.0 authentication (no credentials stored)
+- **CC and BCC Support**: Optional carbon copy and blind carbon copy recipients for all emails
 - **Configurable Delays**: Set custom delays between sends with optional randomization
 - **Real-Time Progress**: Track sending progress with detailed logging
 - **Abort Capability**: Stop the sending process at any time
@@ -175,6 +176,8 @@ user3@example.com,Special Offer,,Don't miss our special offer!
 1. **Set Delay**: Enter delay between sends in milliseconds (recommended: 5000ms = 5 seconds)
 2. **Enable Randomization**: Optional - adds random variation (±20%) to delays
 3. **Set Default Body**: Optional - default email body for all emails
+4. **CC Recipients**: Optional - comma-separated email addresses to CC on all emails
+5. **BCC Recipients**: Optional - comma-separated email addresses to BCC on all emails
 
 ### 5. Send Emails
 

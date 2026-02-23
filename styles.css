@@ -319,7 +319,8 @@ section {
 }
 
 .delay-group,
-.body-group {
+.body-group,
+.cc-bcc-group {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
@@ -401,6 +402,21 @@ section {
 }
 
 .body-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.recipient-input {
+    width: 100%;
+    padding: var(--spacing-md);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.recipient-input:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px var(--primary-light);
