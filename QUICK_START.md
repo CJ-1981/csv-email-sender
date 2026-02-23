@@ -96,13 +96,16 @@ jane@example.com,Hello World
 ```csv
 recipient_email,subject,attachment_filename,body_content
 john@example.com,Your Report,report.pdf,Please find attached report.
-jane@example.com,Newsletter,newsletter.pdf,Monthly newsletter inside.
+jane@example.com,Newsletter,"newsletter.pdf,image.png",Monthly newsletter with images.
 bob@example.com,Special Offer,,Don't miss this offer!
+alice@example.com,Documents,"file1.pdf,file2.pdf,file3.pdf",Multiple files attached.
 ```
 
 **Column Names (Case-Insensitive)**:
 - **Required**: `recipient_email` (or `email`, `to`), `subject`
 - **Optional**: `attachment_filename` (or `attachment`), `body_content` (or `body`, `message`)
+
+**Multiple Attachments**: Separate filenames with commas. All files must be uploaded in the Attachments section.
 
 ---
 

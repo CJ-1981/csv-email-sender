@@ -158,7 +158,7 @@ Or create a CSV or Excel file with the following columns:
 - `subject`: Email subject line (optional if Default Subject is set in the app)
 
 **Optional Columns:**
-- `attachment_filename` (or `attachment`): Filename matching uploaded attachment
+- `attachment_filename` (or `attachment`): Filename matching uploaded attachment. **Supports multiple files** using comma separation (e.g., `file1.pdf, file2.pdf, file3.pdf`)
 - `body_content` (or `body`, `message`): Email body (overrides default body)
 
 **Example CSV:**
@@ -167,7 +167,13 @@ recipient_email,subject,attachment_filename,body_content
 user1@example.com,Welcome to our newsletter,newsletter.pdf,Thank you for subscribing!
 user2@example.com,Monthly Update,report.pdf,Here is your monthly report.
 user3@example.com,Special Offer,,Don't miss our special offer!
+user4@example.com,Documents,"report.pdf,invoice.pdf",Please find attached documents.
 ```
+
+**Multiple Attachments:**
+- Separate filenames with commas: `file1.pdf, file2.pdf, file3.pdf`
+- All specified files must be uploaded in the Attachment Files section
+- Each recipient can have different sets of attachments
 
 **Note:** If your CSV doesn't have a subject column, you can set a "Default Subject" in the app configuration. The CSV subject will always override the default subject when present.
 
@@ -229,7 +235,8 @@ jane@example.com,Update,Here is your monthly update.
 ```csv
 recipient_email,subject,attachment_filename
 john@example.com,Your Report,report.pdf
-jane@example.com,Newsletter,newsletter.pdf
+jane@example.com,Newsletter,"newsletter.pdf,image.png"
+bob@example.com,Documents,"file1.pdf,file2.pdf,file3.pdf"
 ```
 
 ### Excel Format Instructions

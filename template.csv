@@ -2,3 +2,4 @@ recipient_email,subject,attachment_filename,body_content
 recipient1@example.com,Sample Email Subject 1,example.pdf,This is a sample email body content for recipient 1.
 recipient2@example.com,,This email uses the default subject and body configured in the app.
 recipient3@example.com,Important Update,document.pdf,Custom body content for this specific recipient.
+recipient4@example.com,Multiple Attachments,"file1.pdf,file2.pdf,file3.pdf",This email demonstrates multiple attachments using comma-separated filenames.

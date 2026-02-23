@@ -506,16 +506,34 @@ function getSubject(row) {
 }
 
 /**
- * Get attachment filename from CSV row
+ * Get attachment filenames from CSV row
+ * Supports comma-separated multiple files (e.g., "file1.pdf, file2.pdf, file3.pdf")
  * @param {Object} row - CSV row object
- * @returns {string} Attachment filename
+ * @returns {string[]} Array of attachment filenames
  */
-function getAttachmentFilename(row) {
+function getAttachmentFilenames(row) {
     const variations = ['attachment_filename', 'attachment'];
     for (const col of variations) {
-        if (row[col]) return row[col].trim();
+        if (row[col]) {
+            // Split by comma and trim each filename
+            return row[col]
+                .split(',')
+                .map(f => f.trim())
+                .filter(f => f.length > 0); // Remove empty strings
+        }
     }
-    return '';
+    return [];
+}
+
+/**
+ * Get attachment filename from CSV row (legacy alias for backward compatibility)
+ * @deprecated Use getAttachmentFilenames() instead
+ * @param {Object} row - CSV row object
+ * @returns {string} First attachment filename or empty string
+ */
+function getAttachmentFilename(row) {
+    const filenames = getAttachmentFilenames(row);
+    return filenames.length > 0 ? filenames[0] : '';
 }
 
 /**
@@ -964,10 +982,12 @@ function checkMissingAttachments() {
     const missing = new Set();
 
     state.csvData.forEach((row) => {
-        const attachmentFilename = getAttachmentFilename(row);
-        if (attachmentFilename && !findAttachment(attachmentFilename)) {
-            missing.add(attachmentFilename);
-        }
+        const attachmentFilenames = getAttachmentFilenames(row);
+        attachmentFilenames.forEach(filename => {
+            if (filename && !findAttachment(filename)) {
+                missing.add(filename);
+            }
+        });
     });
 
     return Array.from(missing);
@@ -1056,14 +1076,16 @@ async function sendSingleEmail(row) {
     const recipient = getRecipientEmail(row);
     const subject = getSubject(row);
     const body = getBodyContent(row) || state.defaultBody;
-    const attachmentFilename = getAttachmentFilename(row);
-    const attachment = findAttachment(attachmentFilename);
+    const attachmentFilenames = getAttachmentFilenames(row);
+    const attachments = attachmentFilenames
+        .map(filename => findAttachment(filename))
+        .filter(a => a !== null); // Remove null entries for missing files
 
     try {
         if (state.selectedProvider === 'gmail') {
-            return await sendGmailEmail(recipient, subject, body, attachment);
+            return await sendGmailEmail(recipient, subject, body, attachments);
         } else if (state.selectedProvider === 'outlook') {
-            return await sendOutlookEmail(recipient, subject, body, attachment);
+            return await sendOutlookEmail(recipient, subject, body, attachments);
         }
     } catch (error) {
         // Handle specific error types (F014, AC012, AC013, AC015)
@@ -1086,8 +1108,9 @@ async function sendSingleEmail(row) {
  * Acceptance Criteria: AC011, AC012, AC013
  *
  * Constructs RFC 2822 formatted email with base64-encoded attachments.
+ * Supports multiple attachments via array.
  */
-async function sendGmailEmail(to, subject, body, attachment) {
+async function sendGmailEmail(to, subject, body, attachments) {
     // Get CC and BCC recipients
     const ccList = parseEmailList(state.ccRecipients);
     const bccList = parseEmailList(state.bccRecipients);
@@ -1113,8 +1136,9 @@ async function sendGmailEmail(to, subject, body, attachment) {
         'Content-Type: text/plain; charset=utf-8'
     );
 
-    if (attachment) {
-        // Email with attachment
+    // Handle attachments (single file or multiple files)
+    if (attachments && attachments.length > 0) {
+        // Email with attachment(s)
         const boundary = 'boundary_' + Date.now();
         emailContent = [
             `To: ${to}`,
@@ -1142,17 +1166,21 @@ async function sendGmailEmail(to, subject, body, attachment) {
             ''
         );
 
-        // Read attachment as base64
-        const base64Attachment = await fileToBase64(attachment);
-        emailContent.push(
-            `--${boundary}`,
-            'Content-Type: application/octet-stream',
-            `Content-Disposition: attachment; filename="${attachment.name}"`,
-            'Content-Transfer-Encoding: base64',
-            '',
-            base64Attachment,
-            `--${boundary}--`
-        );
+        // Add all attachments
+        for (const attachment of attachments) {
+            const base64Attachment = await fileToBase64(attachment);
+            emailContent.push(
+                `--${boundary}`,
+                'Content-Type: application/octet-stream',
+                `Content-Disposition: attachment; filename="${attachment.name}"`,
+                'Content-Transfer-Encoding: base64',
+                '',
+                base64Attachment,
+                ''
+            );
+        }
+
+        emailContent.push(`--${boundary}--`);
     } else {
         // Plain text email
         emailContent.push('', body);
@@ -1192,8 +1220,9 @@ async function sendGmailEmail(to, subject, body, attachment) {
  * Acceptance Criteria: AC014, AC015
  *
  * Constructs MIME message with file attachments.
+ * Supports multiple attachments via array.
  */
-async function sendOutlookEmail(to, subject, body, attachment) {
+async function sendOutlookEmail(to, subject, body, attachments) {
     // Get CC and BCC recipients
     const ccList = parseEmailList(state.ccRecipients);
     const bccList = parseEmailList(state.bccRecipients);
@@ -1223,14 +1252,17 @@ async function sendOutlookEmail(to, subject, body, attachment) {
         }));
     }
 
-    // Add attachment if present
-    if (attachment) {
-        const base64Attachment = await fileToBase64(attachment);
-        message.attachments = [{
-            '@odata.type': '#microsoft.graph.fileAttachment',
-            name: attachment.name,
-            contentBytes: base64Attachment
-        }];
+    // Add attachments if present (supports multiple)
+    if (attachments && attachments.length > 0) {
+        message.attachments = [];
+        for (const attachment of attachments) {
+            const base64Attachment = await fileToBase64(attachment);
+            message.attachments.push({
+                '@odata.type': '#microsoft.graph.fileAttachment',
+                name: attachment.name,
+                contentBytes: base64Attachment
+            });
+        }
     }
 
     // Send via Microsoft Graph API
