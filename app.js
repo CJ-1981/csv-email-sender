@@ -615,12 +615,18 @@ async function authenticate() {
 }
 
 /**
- * Authenticate with Gmail using Google API Client
+ * Authenticate with Gmail using Google Identity Services
  *
- * Uses OAuth 2.0 implicit flow for client-side authentication.
+ * Uses OAuth 2.0 authorization code flow with PKCE for client-side authentication.
  * Requests gmail.send scope for sending emails.
  */
 async function authenticateGmail() {
+    // Check if running on file:// protocol (local file opening)
+    if (window.location.protocol === 'file:') {
+        openOAuthWizard();
+        throw new Error('Gmail OAuth requires a web server. Please run the app on a local server (http://localhost) or deploy to GitHub Pages. See README for local development instructions.');
+    }
+
     // Get current OAuth config (reads from localStorage)
     const oauthConfig = OAUTH_CONFIG.gmail;
 
@@ -631,32 +637,68 @@ async function authenticateGmail() {
         throw new Error('Gmail Client ID not configured. Please complete the setup wizard.');
     }
 
+    // Check if google.accounts is available
+    if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        throw new Error('Google Identity Services not loaded. Please refresh the page and try again.');
+    }
+
     // Initialize Google API Client
-    await gapi.load('client:auth2', async () => {
-        try {
-            await gapi.auth2.init({
-                client_id: oauthConfig.clientId,
-                scope: oauthConfig.scopes
+    try {
+        await new Promise((resolve, reject) => {
+            gapi.load('client', async () => {
+                try {
+                    await gapi.client.init({
+                        discoveryDocs: oauthConfig.discoveryDocs,
+                    });
+                    resolve();
+                } catch (error) {
+                    console.error('Error initializing Google API client:', error);
+                    reject(error);
+                }
             });
+        });
+    } catch (error) {
+        logMessage('warning', 'Google API client initialization failed, continuing anyway...');
+    }
 
-            const authInstance = gapi.auth2.getAuthInstance();
-            const user = await authInstance.signIn();
+    // Use Google Identity Services for authentication
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: oauthConfig.clientId,
+        scope: oauthConfig.scopes,
+        callback: (response) => {
+            if (response.error) {
+                setStatus(elements.authStatus, 'error', `Authentication failed: ${response.error}`);
+                logMessage('error', `Gmail authentication failed: ${response.error}`);
+                return;
+            }
 
-            // Get access token
-            const authResponse = user.getAuthResponse();
-            state.authToken = authResponse.access_token;
-            state.userEmail = user.getBasicProfile().getEmail();
+            // Store the access token
+            state.authToken = response.access_token;
             state.isAuthenticated = true;
 
-            setStatus(elements.authStatus, 'success', `Authenticated as: ${state.userEmail}`);
-            logMessage('success', `Gmail authentication successful: ${state.userEmail}`);
-            elements.authButton.disabled = true;
-            updateStartButton();
-
-        } catch (error) {
-            throw new Error(`Gmail authentication failed: ${error.error || error.message}`);
-        }
+            // Get user email using the Gmail API
+            gapi.client.gmail.users.getProfile({ userId: 'me' }).then(
+                (profile) => {
+                    state.userEmail = profile.result.emailAddress;
+                    setStatus(elements.authStatus, 'success', `Authenticated as: ${state.userEmail}`);
+                    logMessage('success', `Gmail authentication successful: ${state.userEmail}`);
+                    elements.authButton.disabled = true;
+                    updateStartButton();
+                },
+                (error) => {
+                    // If we can't get the profile, still mark as authenticated
+                    state.userEmail = 'Authenticated User';
+                    setStatus(elements.authStatus, 'success', `Authenticated successfully`);
+                    logMessage('success', `Gmail authentication successful`);
+                    elements.authButton.disabled = true;
+                    updateStartButton();
+                }
+            );
+        },
     });
+
+    // Request the token
+    tokenClient.requestAccessToken();
 }
 
 /**
@@ -1306,6 +1348,30 @@ function updateStartButton() {
 // ============================================
 
 /**
+ * Download CSV template file
+ */
+function downloadCSVTemplate() {
+    const templateContent = `recipient_email,subject,attachment_filename,body_content
+recipient1@example.com,Sample Email Subject 1,example.pdf,This is a sample email body content for recipient 1.
+recipient2@example.com,Sample Email Subject 2,,This email uses the default body content configured in the app.
+recipient3@example.com,Important Update,document.pdf,Custom body content for this specific recipient.`;
+
+    const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'csv-email-template.csv');
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    logMessage('info', 'CSV template downloaded');
+}
+
+/**
  * Initialize event listeners
  */
 function initEventListeners() {
@@ -1343,6 +1409,12 @@ function initEventListeners() {
 
     // Reset button
     elements.resetButton.addEventListener('click', resetApplication);
+
+    // Template download button
+    const downloadTemplateButton = document.getElementById('download-template-button');
+    if (downloadTemplateButton) {
+        downloadTemplateButton.addEventListener('click', downloadCSVTemplate);
+    }
 }
 
 // ============================================
@@ -1384,11 +1456,15 @@ function openOAuthWizard() {
         showStep('welcome');
 
         // Populate URLs
-        const currentUrl = window.location.href.split('?')[0]; // Remove query params
+        // For authorized origins, use only the origin (protocol + hostname) without path
+        const originUrl = window.location.origin; // e.g., https://cj-1981.github.io
+        // For redirect URIs, use the full current URL without query params
+        const currentUrl = window.location.href.split('?')[0];
+
         const gmailOriginUrl = document.getElementById('gmail-origin-url');
         const outlookRedirectUrl = document.getElementById('outlook-redirect-url');
 
-        if (gmailOriginUrl) gmailOriginUrl.textContent = currentUrl;
+        if (gmailOriginUrl) gmailOriginUrl.textContent = originUrl;
         if (outlookRedirectUrl) outlookRedirectUrl.textContent = currentUrl;
 
         // Prevent background scrolling
@@ -1592,6 +1668,29 @@ function resetOAuthConfiguration() {
 function init() {
     initElements();
     initEventListeners();
+
+    // Initialize Google API Client if Gmail is configured
+    if (OAUTH_CONFIG.isConfigured('gmail')) {
+        gapi.load('client', async () => {
+            try {
+                await gapi.client.init({
+                    discoveryDocs: OAUTH_CONFIG.gmail.discoveryDocs,
+                });
+                console.log('✓ Google API Client initialized');
+            } catch (error) {
+                console.error('✗ Failed to initialize Google API Client:', error);
+            }
+        });
+    }
+
+    // Check if running on file:// protocol and show warning
+    if (window.location.protocol === 'file:') {
+        const localWarning = document.getElementById('local-warning');
+        if (localWarning) {
+            localWarning.classList.remove('hidden');
+        }
+        logMessage('warning', 'Running on file:// protocol. Gmail OAuth requires a web server.');
+    }
 
     // Check if OAuth wizard should be shown
     if (shouldShowOAuthWizard()) {

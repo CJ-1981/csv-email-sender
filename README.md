@@ -43,27 +43,33 @@ If you want to send via Gmail:
 3. Enable the Gmail API:
    - Navigate to "APIs & Services" > "Library"
    - Search for "Gmail API" and enable it
-4. Create OAuth 2.0 credentials:
+4. Configure OAuth consent screen:
+   - Navigate to "APIs & Services" > "OAuth consent screen"
+   - Choose "External" user type
+   - Fill in required fields (App name, User support email, Developer contact)
+   - Add "https://www.googleapis.com/auth/gmail.send" as a scope
+5. Create OAuth 2.0 credentials:
    - Navigate to "APIs & Services" > "Credentials"
    - Click "Create Credentials" > "OAuth client ID"
    - Application type: "Web application"
    - Name: "CSV Email Sender"
-   - Authorized JavaScript origins: Add your GitHub Pages URL (e.g., `https://username.github.io`)
-   - Authorized redirect URIs: Add your GitHub Pages URL
+   - Authorized JavaScript origins: Add your domain without path (e.g., `https://username.github.io` or `http://localhost:8000` for local testing)
    - Click "Create"
-5. Copy the **Client ID** (you'll need it in Step 3)
+6. Copy the **Client ID** (you'll need it in Step 3)
+
+**Note:** With the new Google Identity Services, you don't need to configure Authorized redirect URIs.
 
 ### Step 2: Configure Outlook OAuth (Optional)
 
 If you want to send via Outlook:
 
 1. Go to [Azure Portal](https://portal.azure.com/)
-2. Navigate to "Azure Active Directory" > "App registrations"
+2. Navigate to "Microsoft Entra ID (formerly Azure AD)" > "App registrations"
 3. Click "New registration"
 4. Fill in the form:
    - Name: "CSV Email Sender"
    - Supported account types: "Accounts in any organizational directory and personal Microsoft accounts"
-   - Redirect URI: Web, enter your GitHub Pages URL (e.g., `https://username.github.io/csv-email-sender/`)
+   - Redirect URI: Web, enter your current page URL (e.g., `https://username.github.io/csv-email-sender/`)
    - Click "Register"
 5. Configure API permissions:
    - Navigate to "API permissions" > "Add a permission"
@@ -72,28 +78,24 @@ If you want to send via Outlook:
    - Click "Add permissions"
 6. Copy the **Application (client) ID** (you'll need it in Step 3)
 
-### Step 3: Update OAuth Credentials in app.js
+### Step 3: Configure OAuth Credentials in the App
 
-1. Open `app.js` in a text editor
-2. Find the `OAUTH_CONFIG` object at the top of the file
-3. Replace the placeholder values with your actual credentials:
+The easiest way to configure your credentials is to use the built-in OAuth Setup Wizard:
 
+1. Open the application in your browser
+2. Click the "⚙️ Setup OAuth" button
+3. Follow the step-by-step instructions to enter your Client ID(s)
+4. Your credentials are stored in your browser's localStorage
+
+**Alternative: Manual Configuration**
+You can also configure credentials via browser console:
 ```javascript
-const OAUTH_CONFIG = {
-    gmail: {
-        clientId: 'YOUR_GMAIL_CLIENT_ID_HERE', // Replace with your Gmail Client ID
-        scopes: 'https://www.googleapis.com/auth/gmail.send',
-        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest']
-    },
-    outlook: {
-        clientId: 'YOUR_OUTLOOK_CLIENT_ID_HERE', // Replace with your Outlook Client ID
-        scopes: ['Mail.Send'],
-        authority: 'https://login.microsoftonline.com/common'
-    }
-};
-```
+// For Gmail
+localStorage.setItem('oauth_gmail_client_id', 'YOUR_GMAIL_CLIENT_ID');
 
-4. Save the file
+// For Outlook
+localStorage.setItem('oauth_outlook_client_id', 'YOUR_OUTLOOK_CLIENT_ID');
+```
 
 ### Step 4: Deploy to GitHub Pages
 
@@ -126,7 +128,9 @@ const OAUTH_CONFIG = {
 
 ### 1. Prepare Your Data File
 
-Create a CSV or Excel file with the following columns:
+You can download a CSV template directly from the app by clicking the "Download CSV Template" button in the upload section.
+
+Or create a CSV or Excel file with the following columns:
 
 **Supported File Formats:**
 - **CSV** (.csv): Comma-separated values file
@@ -293,6 +297,26 @@ To avoid account suspension and comply with anti-spam laws:
 
 ## Troubleshooting
 
+### "Error 400: invalid_request" or "redirect_uri=storagerelay://file"
+
+**Cause**: You're trying to use Gmail OAuth while opening the HTML file directly (file:// protocol).
+
+**Solution**: You must run a local web server. Gmail OAuth does not work with file:// protocol.
+
+Run one of these commands in your project directory:
+```bash
+# Python 3
+python -m http.server 8000
+
+# Node.js
+npx serve
+
+# PHP
+php -S localhost:8000
+```
+
+Then open `http://localhost:8000` in your browser instead of opening the HTML file directly.
+
 ### "Authentication failed: Client ID not configured"
 
 **Solution**: Configure OAuth credentials in `app.js` (see Setup Instructions above)
@@ -361,12 +385,25 @@ To run the application locally:
    cd csv-email-sender
    ```
 
-2. Serve the files using a local server:
+2. **IMPORTANT: You must use a local web server!**
+   Gmail OAuth does NOT work when opening HTML files directly (file:// protocol). You must run a local web server.
+
+   **Option A: Use the provided scripts (Easiest)**
+   - Windows: Double-click `start-server.bat`
+   - Mac/Linux: Run `bash start-server.sh` or `./start-server.sh`
+
+   **Option B: Manual server startup**
+
+   Choose one of these options:
+
    ```bash
-   # Using Python 3
+   # Using Python 3 (recommended - comes with Python)
    python -m http.server 8000
 
-   # Using Node.js (with npx)
+   # Using Python 2
+   python -m SimpleHTTPServer 8000
+
+   # Using Node.js (with npx - no installation needed)
    npx serve
 
    # Using PHP
@@ -376,6 +413,47 @@ To run the application locally:
 3. Open your browser to `http://localhost:8000`
 
 4. **Important**: Update OAuth redirect URIs to include `http://localhost:8000`
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/CJ-1981/csv-email-sender.git
+   cd csv-email-sender
+   ```
+
+2. **IMPORTANT: You must use a local web server!**
+   Gmail OAuth does NOT work when opening HTML files directly (file:// protocol). You must run a local web server.
+
+   Choose one of these options:
+
+   ```bash
+   # Using Python 3 (recommended - comes with Python)
+   python -m http.server 8000
+
+   # Using Python 2
+   python -m SimpleHTTPServer 8000
+
+   # Using Node.js (with npx - no installation needed)
+   npx serve
+
+   # Using Node.js (with serve package installed)
+   npm install -g serve
+   serve
+
+   # Using PHP
+   php -S localhost:8000
+   ```
+
+3. Open your browser to `http://localhost:8000`
+
+4. **Important**: Update OAuth redirect URIs to include `http://localhost:8000`
+   - For Gmail: Add `http://localhost:8000` to Authorized JavaScript origins in Google Cloud Console
+   - For Outlook: Add `http://localhost:8000` as a Redirect URI in Azure Portal
+
+**Why can't I just open index.html directly?**
+
+Google's OAuth 2.0 implementation requires a proper HTTP/HTTPS server and does not support the `file://` protocol. This is a security requirement from Google. If you try to authenticate while opening the file directly, you'll get a `redirect_uri=mismatch` or `invalid_request` error.
+
+**Outlook authentication** may work without a server, but Gmail definitely requires one.
 
 ### File Structure
 

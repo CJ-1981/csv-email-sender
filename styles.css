@@ -204,6 +204,35 @@ section {
     margin-top: var(--spacing-sm);
 }
 
+/* Template Download Button */
+.template-download {
+    margin-top: var(--spacing-sm);
+}
+
+.template-button {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background-color: var(--info-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.template-button:hover {
+    background-color: #0e7490;
+}
+
+.template-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--info-light);
+}
+
 /* Attachment List */
 .attachment-list {
     margin-top: var(--spacing-md);

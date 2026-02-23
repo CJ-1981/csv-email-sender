@@ -13,6 +13,9 @@
     <!-- SheetJS for Excel parsing -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
+    <!-- Google Identity Services for Gmail OAuth -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
     <!-- Google API Client for Gmail -->
     <script src="https://apis.google.com/js/api.js"></script>
 
@@ -48,6 +51,22 @@
             </div>
         </section>
 
+        <!-- Local Development Warning -->
+        <section id="local-warning" class="warning-section hidden" aria-labelledby="local-warning-heading">
+            <h2 id="local-warning-heading" class="warning-title">Local Development Detected</h2>
+            <div class="warning-content" role="alert">
+                <p><strong>⚠️ Gmail OAuth does not work when opening HTML files directly (file:// protocol).</strong></p>
+                <p>To test Gmail authentication locally, you need to run a local web server:</p>
+                <ul class="warning-list">
+                    <li><strong>Python 3:</strong> <code>python -m http.server 8000</code></li>
+                    <li><strong>Node.js:</strong> <code>npx serve</code></li>
+                    <li><strong>PHP:</strong> <code>php -S localhost:8000</code></li>
+                </ul>
+                <p>Then open <code>http://localhost:8000</code> in your browser.</p>
+                <p><strong>Outlook authentication</strong> should work fine even without a server.</p>
+            </div>
+        </section>
+
         <!-- File Upload Section (F001, F002) -->
         <section class="upload-section" aria-labelledby="upload-heading">
             <h2 id="upload-heading" class="section-title">1. Upload Files</h2>
@@ -65,6 +84,11 @@
                     aria-describedby="csv-hint csv-status"
                     class="file-input"
                 >
+                <div class="template-download">
+                    <button type="button" id="download-template-button" class="template-button" aria-label="Download CSV template">
+                        Download CSV Template
+                    </button>
+                </div>
                 <div id="csv-status" class="status-message" aria-live="polite"></div>
                 <p id="csv-hint" class="hint-text">
                     Supports CSV (.csv), Excel (.xlsx, .xls) files. Optional columns: attachment_filename, body_content
@@ -414,13 +438,14 @@
                             <div class="step-number">5</div>
                             <div class="step-content">
                                 <h4>Configure Authorized Origins</h4>
-                                <p>Add your current page URL to <strong>Authorized JavaScript origins</strong>:</p>
+                                <p>Add your domain (without path) to <strong>Authorized JavaScript origins</strong>:</p>
                                 <div class="url-copy-box">
                                     <code id="gmail-origin-url"></code>
                                     <button type="button" class="copy-button" onclick="copyToClipboard('gmail-origin-url')" aria-label="Copy URL">
                                         Copy
                                     </button>
                                 </div>
+                                <p class="help-text">For local testing, also add: <code>http://127.0.0.1</code> and <code>http://localhost</code></p>
                             </div>
                         </div>
 

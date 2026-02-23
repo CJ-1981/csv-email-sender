@@ -1,0 +1,4 @@
+recipient_email,subject,attachment_filename,body_content
+recipient1@example.com,Sample Email Subject 1,example.pdf,This is a sample email body content for recipient 1.
+recipient2@example.com,Sample Email Subject 2,,This email uses the default body content configured in the app.
+recipient3@example.com,Important Update,document.pdf,Custom body content for this specific recipient.
