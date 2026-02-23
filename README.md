@@ -2,16 +2,11 @@
 
 A client-side bulk email sender for Gmail and Outlook, built with vanilla JavaScript. No backend required - all processing happens in your browser.
 
-## ⚠️ Important: Gmail OAuth Setup
+## ⚠️ Important: OAuth Setup
 
-**If you're using Gmail**, you must add yourself as a test user or authentication will fail with "Access blocked". See [OAUTH_SETUP.md](OAUTH_SETUP.md) for step-by-step instructions.
+**Gmail users:** You must add yourself as a test user or authentication will fail with "Access blocked". See [OAUTH_SETUP.md](OAUTH_SETUP.md) for instructions.
 
-**Quick Fix:**
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Navigate to **APIs & Services** > **OAuth consent screen**
-3. Scroll to **Test users** and click **+ Add users**
-4. Add your Gmail address
-5. Save and try again
+**Outlook users:** If you see error `AADSTS50194`, your app is configured as single-tenant. See [OUTLOOK_OAUTH_SETUP.md](OUTLOOK_OAUTH_SETUP.md) for the quick fix.
 
 ## Features
 
@@ -342,6 +337,24 @@ To avoid account suspension and comply with anti-spam laws:
 **For detailed instructions:** See [OAUTH_SETUP.md](OAUTH_SETUP.md)
 
 **Alternative:** You can publish your app to production (requires Google verification and fee), but adding test users is free and immediate.
+
+### "AADSTS50194: Application is not configured as a multi-tenant application" (Outlook)
+
+**Cause:** Your Azure AD app is configured as single-tenant, but the app uses the `/common` endpoint.
+
+**Solution:**
+1. Go to [Azure Portal](https://portal.azure.com/)
+2. Navigate to **App registrations** > Your app
+3. Click **Authentication** in the left menu
+4. Find **Supported account types**
+5. Change from "Accounts in this organizational directory only" to "Accounts in any organizational directory and personal Microsoft accounts"
+6. Click **Save**
+7. Wait 1-2 minutes for Azure to propagate changes
+8. Try authenticating again
+
+**For detailed instructions:** See [OUTLOOK_OAUTH_SETUP.md](OUTLOOK_OAUTH_SETUP.md)
+
+**Quick Summary:** Change your app from single-tenant to multi-tenant in Azure Portal.
 
 ### "Error 400: invalid_request" or "redirect_uri=storagerelay://file"
 
