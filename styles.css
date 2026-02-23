@@ -319,6 +319,7 @@ section {
 }
 
 .delay-group,
+.subject-group,
 .body-group,
 .cc-bcc-group {
     display: flex;
@@ -428,6 +429,21 @@ section {
     border-left: 4px solid var(--info-color);
     border-radius: var(--radius-md);
     font-weight: 500;
+}
+
+.subject-input {
+    width: 100%;
+    padding: var(--spacing-md);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.subject-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 /* Progress Section (F006, F007, F013) */

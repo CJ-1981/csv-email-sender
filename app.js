@@ -124,6 +124,7 @@ const state = {
     // Configuration
     delayMs: 5000,
     randomizationEnabled: false,
+    defaultSubject: '',
     defaultBody: '',
     ccRecipients: '', // CC recipients (comma-separated)
     bccRecipients: '', // BCC recipients (comma-separated)
@@ -166,6 +167,7 @@ function initElements() {
 
     elements.delayInput = document.getElementById('delay-input');
     elements.randomizationCheckbox = document.getElementById('randomization-checkbox');
+    elements.defaultSubject = document.getElementById('default-subject');
     elements.defaultBody = document.getElementById('default-body');
     elements.ccRecipients = document.getElementById('cc-recipients');
     elements.bccRecipients = document.getElementById('bcc-recipients');
@@ -499,7 +501,8 @@ function getSubject(row) {
     for (const col of variations) {
         if (row[col]) return row[col].trim();
     }
-    return '';
+    // Return default subject if CSV doesn't have one
+    return state.defaultSubject || '';
 }
 
 /**
@@ -864,6 +867,17 @@ async function startSending() {
         return;
     }
 
+    // Check if there's at least a default subject or subjects in CSV
+    const hasCsvSubject = state.csvData.some(row => {
+        const subject = getSubject(row);
+        return subject && subject.trim() !== '';
+    });
+
+    if (!hasCsvSubject && !state.defaultSubject) {
+        alert('Please provide a Default Subject or ensure your CSV has a subject column for all rows.');
+        return;
+    }
+
     if (state.delayMs === 0) {
         // Warning for zero delay (AC034)
         if (!confirm('Zero delay may trigger rate limits and account suspension. Recommended minimum: 1000ms. Continue?')) {
@@ -899,6 +913,9 @@ async function startSending() {
 
     // Build confirmation message
     let confirmMessage = `Ready to send ${state.csvRows} emails with ${state.delayMs}ms delay between sends.`;
+    if (state.defaultSubject && !hasCsvSubject) {
+        confirmMessage += `\n\nSubject: ${state.defaultSubject}`;
+    }
     if (state.ccRecipients) {
         confirmMessage += `\n\nCC: ${state.ccRecipients}`;
     }
@@ -1385,6 +1402,7 @@ function resetApplication() {
     state.failedCount = 0;
     state.startTime = null;
     state.results = [];
+    state.defaultSubject = '';
     state.ccRecipients = '';
     state.bccRecipients = '';
 
@@ -1394,6 +1412,7 @@ function resetApplication() {
     elements.providerSelect.value = '';
     elements.delayInput.value = '5000';
     elements.randomizationCheckbox.checked = false;
+    elements.defaultSubject.value = '';
     elements.defaultBody.value = '';
     elements.ccRecipients.value = '';
     elements.bccRecipients.value = '';
@@ -1509,6 +1528,9 @@ function initEventListeners() {
     // Delay configuration
     elements.delayInput.addEventListener('input', handleDelayChange);
     elements.randomizationCheckbox.addEventListener('change', handleRandomizationChange);
+    elements.defaultSubject.addEventListener('input', () => {
+        state.defaultSubject = elements.defaultSubject.value;
+    });
     elements.defaultBody.addEventListener('input', () => {
         state.defaultBody = elements.defaultBody.value;
     });

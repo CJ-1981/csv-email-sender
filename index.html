@@ -195,6 +195,21 @@
                     </div>
                 </div>
 
+                <!-- Default Subject -->
+                <div class="subject-group">
+                    <label for="default-subject" class="config-label">Default Subject:</label>
+                    <input
+                        type="text"
+                        id="default-subject"
+                        class="subject-input"
+                        aria-describedby="subject-hint"
+                        placeholder="Enter default subject line (can be overridden per row in CSV)"
+                    >
+                    <p id="subject-hint" class="hint-text">
+                        This subject will be used for all emails unless overridden by the subject column in CSV
+                    </p>
+                </div>
+
                 <!-- Default Body Content -->
                 <div class="body-group">
                     <label for="default-body" class="config-label">Default Email Body:</label>

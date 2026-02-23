@@ -160,7 +160,7 @@ Or create a CSV or Excel file with the following columns:
 
 **Required Columns:**
 - `recipient_email` (or `email`, `to`): Valid email address
-- `subject`: Email subject line
+- `subject`: Email subject line (optional if Default Subject is set in the app)
 
 **Optional Columns:**
 - `attachment_filename` (or `attachment`): Filename matching uploaded attachment
@@ -173,6 +173,8 @@ user1@example.com,Welcome to our newsletter,newsletter.pdf,Thank you for subscri
 user2@example.com,Monthly Update,report.pdf,Here is your monthly report.
 user3@example.com,Special Offer,,Don't miss our special offer!
 ```
+
+**Note:** If your CSV doesn't have a subject column, you can set a "Default Subject" in the app configuration. The CSV subject will always override the default subject when present.
 
 **Example Excel:**
 - Create an Excel file (.xlsx or .xls)
@@ -196,9 +198,12 @@ user3@example.com,Special Offer,,Don't miss our special offer!
 
 1. **Set Delay**: Enter delay between sends in milliseconds (recommended: 5000ms = 5 seconds)
 2. **Enable Randomization**: Optional - adds random variation (±20%) to delays
-3. **Set Default Body**: Optional - default email body for all emails
-4. **CC Recipients**: Optional - comma-separated email addresses to CC on all emails
-5. **BCC Recipients**: Optional - comma-separated email addresses to BCC on all emails
+3. **Set Default Subject**: Optional - default subject line for all emails (CSV subject overrides this)
+4. **Set Default Body**: Optional - default email body for all emails
+5. **CC Recipients**: Optional - comma-separated email addresses to CC on all emails
+6. **BCC Recipients**: Optional - comma-separated email addresses to BCC on all emails
+
+**Note:** The `subject` column in your CSV file will override the Default Subject. Use Default Subject when all emails should have the same subject, or when your CSV doesn't have a subject column.
 
 ### 5. Send Emails
 
