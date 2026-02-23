@@ -10,6 +10,9 @@
     <!-- Papa Parse for CSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
+    <!-- SheetJS for Excel parsing -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
     <!-- Google API Client for Gmail -->
     <script src="https://apis.google.com/js/api.js"></script>
 
@@ -49,22 +52,22 @@
         <section class="upload-section" aria-labelledby="upload-heading">
             <h2 id="upload-heading" class="section-title">1. Upload Files</h2>
 
-            <!-- CSV File Upload -->
+            <!-- Data File Upload (CSV/Excel) -->
             <div class="upload-group">
                 <label for="csv-file-input" class="file-label">
-                    <span class="label-text">CSV File *</span>
+                    <span class="label-text">Data File (CSV/Excel) *</span>
                     <span class="label-hint">Required columns: recipient_email, subject</span>
                 </label>
                 <input
                     type="file"
                     id="csv-file-input"
-                    accept=".csv"
+                    accept=".csv,.xlsx,.xls"
                     aria-describedby="csv-hint csv-status"
                     class="file-input"
                 >
                 <div id="csv-status" class="status-message" aria-live="polite"></div>
                 <p id="csv-hint" class="hint-text">
-                    Optional columns: attachment_filename, body_content
+                    Supports CSV (.csv), Excel (.xlsx, .xls) files. Optional columns: attachment_filename, body_content
                 </p>
             </div>
 
@@ -248,7 +251,7 @@
             <div class="log-group">
                 <h3 class="log-title">Progress Log</h3>
                 <div id="progress-log" class="progress-log" role="log" aria-live="polite" aria-atomic="false">
-                    <div class="log-entry log-info">Ready to start. Upload CSV and authenticate to begin.</div>
+                    <div class="log-entry log-info">Ready to start. Upload data file (CSV/Excel) and authenticate to begin.</div>
                 </div>
             </div>
         </section>

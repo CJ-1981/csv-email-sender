@@ -4,7 +4,7 @@ A client-side bulk email sender for Gmail and Outlook, built with vanilla JavaSc
 
 ## Features
 
-- **CSV Upload**: Parse CSV files with email recipient data using Papa Parse
+- **Data File Upload**: Parse CSV or Excel files (.xlsx, .xls) with email recipient data
 - **Multiple Attachments**: Upload multiple attachment files (up to 20MB total recommended)
 - **Dual Provider Support**: Send via Gmail API or Microsoft Graph API (Outlook)
 - **OAuth Authentication**: Secure OAuth 2.0 authentication (no credentials stored)
@@ -16,7 +16,7 @@ A client-side bulk email sender for Gmail and Outlook, built with vanilla JavaSc
 
 ## Demo
 
-[Live Demo](https://chimin123.github.io/csv-email-sender/) (Coming Soon)
+[Live Demo](https://cj-1981.github.io/csv-email-sender/) (Coming Soon)
 
 ## Prerequisites
 
@@ -124,9 +124,13 @@ const OAUTH_CONFIG = {
 
 ## Usage
 
-### 1. Prepare Your CSV File
+### 1. Prepare Your Data File
 
-Create a CSV file with the following columns:
+Create a CSV or Excel file with the following columns:
+
+**Supported File Formats:**
+- **CSV** (.csv): Comma-separated values file
+- **Excel** (.xlsx, .xls): Microsoft Excel workbook (reads first sheet only)
 
 **Required Columns:**
 - `recipient_email` (or `email`, `to`): Valid email address
@@ -144,9 +148,15 @@ user2@example.com,Monthly Update,report.pdf,Here is your monthly report.
 user3@example.com,Special Offer,,Don't miss our special offer!
 ```
 
+**Example Excel:**
+- Create an Excel file (.xlsx or .xls)
+- First row should contain column headers
+- Fill in your data starting from row 2
+- The first sheet in the workbook will be used
+
 ### 2. Upload Files
 
-1. **Upload CSV**: Click "Choose File" under CSV File and select your CSV file
+1. **Upload Data File**: Click "Choose File" under Data File and select your CSV or Excel file
 2. **Upload Attachments**: Click "Choose File" under Attachment Files and select one or more files
 
 ### 3. Select Provider
@@ -169,28 +179,88 @@ user3@example.com,Special Offer,,Don't miss our special offer!
 3. Click "Abort" if needed to stop the process
 4. View summary when complete
 
-## CSV Format Examples
+## Data File Format Examples
 
-### Simple Email List
+### CSV Format Examples
+
+#### Simple Email List
 ```csv
 recipient_email,subject
 john@example.com,Hello World
 jane@example.com,Meeting Reminder
 ```
 
-### With Custom Body Content
+#### With Custom Body Content
 ```csv
 recipient_email,subject,body_content
 john@example.com,Welcome,Welcome to our service!
 jane@example.com,Update,Here is your monthly update.
 ```
 
-### With Attachments
+#### With Attachments
 ```csv
 recipient_email,subject,attachment_filename
 john@example.com,Your Report,report.pdf
 jane@example.com,Newsletter,newsletter.pdf
 ```
+
+### Excel Format Instructions
+
+You can also use Excel files (.xlsx or .xls) instead of CSV:
+
+1. Open Microsoft Excel or your preferred spreadsheet application
+2. Create a new workbook
+3. Add column headers in the first row:
+   - Row 1, Column A: `recipient_email`
+   - Row 1, Column B: `subject`
+   - Row 1, Column C: `attachment_filename` (optional)
+   - Row 1, Column D: `body_content` (optional)
+4. Fill in your data starting from row 2
+5. Save the file as .xlsx or .xls format
+6. Upload the file to the CSV Email Sender application
+
+**Note:** Only the first sheet in your Excel workbook will be read.
+
+## Excel Support
+
+The CSV Email Sender now supports Excel files in addition to CSV files!
+
+### Supported Excel Formats
+
+- **.xlsx** - Excel Workbook (modern format)
+- **.xls** - Excel 97-2003 Workbook (legacy format)
+
+### How It Works
+
+1. Upload your Excel file using the "Data File" upload field
+2. The application automatically detects the file type
+3. Excel files are parsed using the SheetJS library
+4. Data from the first sheet is extracted and processed
+5. The same validation rules apply as CSV files
+
+### Excel File Requirements
+
+- First row must contain column headers
+- Required columns: `recipient_email`, `subject`
+- Optional columns: `attachment_filename`, `body_content`
+- Column names are case-insensitive
+- Only the first sheet in the workbook is processed
+- Protected workbooks are not supported
+
+### Advantages of Using Excel
+
+- **Easier Data Entry**: Excel's grid interface makes data entry simpler
+- **Data Validation**: Use Excel's built-in data validation features
+- **Formatting**: Apply formatting to ensure data consistency
+- **Multiple Sheets**: Organize your data across sheets (only first sheet is read)
+- **Formulas**: Use Excel formulas to generate content dynamically
+
+### Tips for Excel Files
+
+- Remove any empty rows before the header row
+- Ensure there are no merged cells in the header row
+- Save in .xlsx format for best compatibility
+- Test with a small batch first before large sends
 
 ## Security Considerations
 
@@ -229,7 +299,7 @@ To avoid account suspension and comply with anti-spam laws:
 
 ### "Missing required columns: recipient_email, subject"
 
-**Solution**: Ensure your CSV has the required columns. Column names are case-insensitive but must match exactly (or use variations: `email`, `to` for recipient; `subject` is required)
+**Solution**: Ensure your data file (CSV or Excel) has the required columns. Column names are case-insensitive but must match exactly (or use variations: `email`, `to` for recipient; `subject` is required)
 
 ### "Rate limit exceeded - Daily quota exhausted"
 
@@ -243,13 +313,19 @@ To avoid account suspension and comply with anti-spam laws:
 
 **Solution**: Check that email addresses in your CSV are valid (format: user@domain.com)
 
-### CSV not parsing correctly
+### File not parsing correctly
 
-**Solution**: Ensure your CSV is:
+**CSV Files**: Ensure your CSV is:
 - Saved in UTF-8 encoding
 - Uses comma as delimiter
 - Has headers in the first row
 - No special characters in column names
+
+**Excel Files**: Ensure your Excel file:
+- Is in .xlsx or .xls format (not .xlsm or other formats)
+- Has headers in the first row of the first sheet
+- Is not password-protected
+- Contains valid data (no merged cells in header row)
 
 ## Browser Compatibility
 
@@ -281,7 +357,7 @@ To run the application locally:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/chimin123/csv-email-sender.git
+   git clone https://github.com/CJ-1981/csv-email-sender.git
    cd csv-email-sender
    ```
 
@@ -315,6 +391,7 @@ csv-email-sender/
 ### CDN Libraries Used
 
 - [Papa Parse](https://www.papaparse.com/) (v5.4.1) - CSV parsing
+- [SheetJS](https://sheetjs.com/) (v0.20.1) - Excel parsing (Community Edition)
 - [Google API Client](https://github.com/google/google-api-javascript-client) - Gmail API
 - [Microsoft Graph SDK](https://github.com/microsoftgraph/msgraph-sdk-javascript) - Outlook API
 - [MSAL.js](https://github.com/AzureAD/microsoft-authentication-library-for-js) - Microsoft Authentication
@@ -344,15 +421,16 @@ If you encounter issues:
 
 1. Check the [Troubleshooting](#troubleshooting) section
 2. Review the [Setup Instructions](#setup-instructions)
-3. [Open an issue](https://github.com/chimin123/csv-email-sender/issues) on GitHub
+3. [Open an issue](https://github.com/CJ-1981/csv-email-sender/issues) on GitHub
 
 ## Acknowledgments
 
 - Built with vanilla JavaScript (no frameworks)
 - Uses [Papa Parse](https://www.papaparse.com/) for CSV parsing
+- Uses [SheetJS](https://sheetjs.com/) for Excel parsing
 - Powered by Google Gmail API and Microsoft Graph API
 - Hosted on GitHub Pages
 
 ---
 
-**Made with ❤️ by chimin123**
+**Made with ❤️ by CJ-1981**

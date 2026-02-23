@@ -3,17 +3,18 @@
  * CSV Email Sender - Client-Side Application
  * ============================================
  *
- * A client-side bulk email sender for Gmail and Outlook using CSV input.
+ * A client-side bulk email sender for Gmail and Outlook using CSV/Excel input.
  * No backend required - all processing happens in the browser.
  *
  * Architecture:
  * - State Management: Centralized state object
  * - CSV Parsing: Papa Parse library
+ * - Excel Parsing: SheetJS (XLSX) library
  * - OAuth: Google API Client (Gmail), MSAL.js (Outlook)
  * - Email Sending: Gmail API, Microsoft Graph API
  *
  * Functional Requirements Coverage:
- * - F001: CSV File Upload Processing
+ * - F001: Data File Upload Processing (CSV/Excel)
  * - F002: Attachment File Upload
  * - F003: Email Provider Selection
  * - F004: OAuth Authentication
@@ -22,7 +23,7 @@
  * - F007: Process Abortion
  * - F008: Completion Summary
  * - F009: Anti-Spam Warnings
- * - F010: CSV Column Validation
+ * - F010: Data Column Validation
  * - F011: Gmail API Integration
  * - F012: Outlook API Integration
  * - F013: Progress Tracking
@@ -264,13 +265,28 @@ function sanitizeHTML(str) {
 }
 
 // ============================================
-// CSV PROCESSING (F001, F010)
+// DATA FILE PROCESSING (F001, F010)
 // ============================================
 
 /**
- * Handle CSV file upload
+ * Detect file type (CSV or Excel)
+ * @param {File} file - File to check
+ * @returns {string} File type: 'csv', 'excel', or 'unknown'
+ */
+function getFileType(file) {
+    const extension = file.name.split('.').pop().toLowerCase();
+    if (extension === 'csv') return 'csv';
+    if (extension === 'xlsx' || extension === 'xls') return 'excel';
+    return 'unknown';
+}
+
+/**
+ * Handle data file upload (CSV or Excel)
  *
- * Parses CSV using Papa Parse and validates required columns.
+ * Automatically detects file type and uses appropriate parser:
+ * - CSV files: Papa Parse library
+ * - Excel files: SheetJS (XLSX) library
+ *
  * Validates presence of required columns: recipient_email, subject
  *
  * Functional Requirements: F001, F010
@@ -280,19 +296,72 @@ function handleCSVUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    setStatus(elements.csvStatus, 'info', 'Parsing CSV...');
+    const fileType = getFileType(file);
 
-    Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: function(results) {
-            processCSVResults(results);
-        },
-        error: function(error) {
-            setStatus(elements.csvStatus, 'error', `CSV parsing error: ${error.message}`);
-            logMessage('error', `Failed to parse CSV: ${error.message}`);
-        }
-    });
+    if (fileType === 'unknown') {
+        setStatus(elements.csvStatus, 'error', 'Unsupported file type. Please upload a CSV (.csv) or Excel (.xlsx, .xls) file.');
+        logMessage('error', 'Unsupported file type uploaded');
+        return;
+    }
+
+    setStatus(elements.csvStatus, 'info', `Parsing ${fileType === 'excel' ? 'Excel' : 'CSV'} file...`);
+    logMessage('info', `Parsing ${fileType} file: ${file.name}`);
+
+    if (fileType === 'csv') {
+        // Parse CSV using Papa Parse
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                processCSVResults(results);
+            },
+            error: function(error) {
+                setStatus(elements.csvStatus, 'error', `CSV parsing error: ${error.message}`);
+                logMessage('error', `Failed to parse CSV: ${error.message}`);
+            }
+        });
+    } else if (fileType === 'excel') {
+        // Parse Excel using SheetJS
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // Get first sheet name
+                const firstSheetName = workbook.SheetNames[0];
+                if (!firstSheetName) {
+                    throw new Error('Excel file has no sheets');
+                }
+
+                // Convert first sheet to JSON
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                logMessage('info', `Parsed Excel sheet "${firstSheetName}" with ${jsonData.length} rows`);
+
+                // Process the data using the same validation as CSV
+                processCSVResults({
+                    data: jsonData,
+                    meta: {
+                        fields: Object.keys(jsonData.length > 0 ? jsonData[0] : {})
+                    }
+                });
+
+            } catch (error) {
+                setStatus(elements.csvStatus, 'error', `Excel parsing error: ${error.message}`);
+                logMessage('error', `Failed to parse Excel file: ${error.message}`);
+            }
+        };
+
+        reader.onerror = function(error) {
+            setStatus(elements.csvStatus, 'error', `File reading error: ${error.message}`);
+            logMessage('error', `Failed to read file: ${error.message}`);
+        };
+
+        reader.readAsArrayBuffer(file);
+    }
 }
 
 /**
