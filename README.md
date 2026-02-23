@@ -2,6 +2,17 @@
 
 A client-side bulk email sender for Gmail and Outlook, built with vanilla JavaScript. No backend required - all processing happens in your browser.
 
+## ⚠️ Important: Gmail OAuth Setup
+
+**If you're using Gmail**, you must add yourself as a test user or authentication will fail with "Access blocked". See [OAUTH_SETUP.md](OAUTH_SETUP.md) for step-by-step instructions.
+
+**Quick Fix:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to **APIs & Services** > **OAuth consent screen**
+3. Scroll to **Test users** and click **+ Add users**
+4. Add your Gmail address
+5. Save and try again
+
 ## Features
 
 - **Data File Upload**: Parse CSV or Excel files (.xlsx, .xls) with email recipient data
@@ -37,6 +48,8 @@ Before using this application, you need to:
 
 ### Step 1: Configure Gmail OAuth (Optional)
 
+**⚠️ IMPORTANT:** After setting up Gmail OAuth, you MUST add yourself as a test user to authenticate. See [OAUTH_SETUP.md](OAUTH_SETUP.md) for detailed instructions.
+
 If you want to send via Gmail:
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
@@ -49,16 +62,24 @@ If you want to send via Gmail:
    - Choose "External" user type
    - Fill in required fields (App name, User support email, Developer contact)
    - Add "https://www.googleapis.com/auth/gmail.send" as a scope
-5. Create OAuth 2.0 credentials:
+5. **CRITICAL: Add Test Users**
+   - In the OAuth consent screen, scroll to "Test users"
+   - Click "+ Add users"
+   - Add your Gmail address (e.g., `your-email@gmail.com`)
+   - Click "Add" then "Save"
+   - See [OAUTH_SETUP.md](OAUTH_SETUP.md) for detailed guide
+6. Create OAuth 2.0 credentials:
    - Navigate to "APIs & Services" > "Credentials"
    - Click "Create Credentials" > "OAuth client ID"
    - Application type: "Web application"
    - Name: "CSV Email Sender"
    - Authorized JavaScript origins: Add your domain without path (e.g., `https://username.github.io` or `http://localhost:8000` for local testing)
    - Click "Create"
-6. Copy the **Client ID** (you'll need it in Step 3)
+7. Copy the **Client ID** (you'll need it in Step 3)
 
 **Note:** With the new Google Identity Services, you don't need to configure Authorized redirect URIs.
+
+**Common Error:** If you see "Access blocked: has not completed verification", you forgot to add yourself as a test user. See [OAUTH_SETUP.md](OAUTH_SETUP.md) for help.
 
 ### Step 2: Configure Outlook OAuth (Optional)
 
@@ -299,6 +320,23 @@ To avoid account suspension and comply with anti-spam laws:
 7. **Comply with Laws**: Follow CAN-SPAM Act (US), GDPR (EU), and local regulations
 
 ## Troubleshooting
+
+### "Access blocked: has not completed the Google verification process" (Error 403)
+
+**Cause:** Your Google OAuth app is in Testing mode and you haven't been added as a test user.
+
+**Solution:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to **APIs & Services** > **OAuth consent screen**
+3. Scroll down to **Test users**
+4. Click **+ Add users**
+5. Add your email address (e.g., `your-email@gmail.com`)
+6. Click **Add** then **Save**
+7. Wait 1-2 minutes and try authenticating again
+
+**For detailed instructions:** See [OAUTH_SETUP.md](OAUTH_SETUP.md)
+
+**Alternative:** You can publish your app to production (requires Google verification and fee), but adding test users is free and immediate.
 
 ### "Error 400: invalid_request" or "redirect_uri=storagerelay://file"
 
