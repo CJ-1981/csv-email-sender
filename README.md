@@ -23,7 +23,7 @@ A client-side bulk email sender for Gmail and Outlook, built with vanilla JavaSc
 
 ## Demo
 
-[Live Demo](https://cj-1981.github.io/csv-email-sender/) (Coming Soon)
+[Live Demo](https://cj-1981.github.io/csv-email-sender/) 
 
 ## Prerequisites
 
